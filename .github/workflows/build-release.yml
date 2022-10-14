@@ -1,0 +1,8 @@
+name: Release Build of White Box CLI
+run-name: ${{ github.actor }} is running a release build
+on: [push]
+jobs:
+  Release-Build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: make
