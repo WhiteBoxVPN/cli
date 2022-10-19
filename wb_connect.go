@@ -6,15 +6,16 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"net/rpc"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 
 	"github.com/c-robinson/iplib"
 	"github.com/go-resty/resty/v2"
 	"golang.org/x/crypto/ssh"
-	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
@@ -23,6 +24,18 @@ type VpnServer struct {
 	Name    string `json:"name"`
 	Status  string `json:"status"`
 	Id      string `json:"id"`
+}
+
+type Reply struct {
+	Data string
+}
+
+type ConfigData struct {
+	ServerPublicKeyData string
+	ClientAddress       string
+	ServerAddress       string
+	ServerPort          int
+	ClientPrivateKey    string
 }
 
 func connect() {
@@ -36,6 +49,12 @@ func connect() {
 		Get("http://localhost:3000/api/servers")
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	if resp.StatusCode() == 401 {
+		log.Fatal("please login first")
+	} else if resp.StatusCode() != 200 {
+		log.Fatal("error: ", resp.Body())
 	}
 
 	var servers []VpnServer
@@ -70,10 +89,8 @@ func connect() {
 	if err != nil {
 		log.Fatalf("unable to read private key: %v", err)
 	}
-
 	passphrase := getPassword("Enter the passphrase for key '/home/wesley/.ssh/id_rsa': ")
 	passphraseByteArray := []byte(passphrase)
-
 	// Create the Signer for this private key.
 	signer, err := ssh.ParsePrivateKeyWithPassphrase(key, passphraseByteArray)
 	if err != nil {
@@ -88,8 +105,11 @@ func connect() {
 		HostKeyCallback: ssh.FixedHostKey(sshPublicKey),
 	}
 
+	serverIp := "45.33.35.178"
+	serverSshEndpoint := fmt.Sprintf("%s:%d", serverIp, 22)
+
 	// Connect to ssh server
-	sshClient, err := ssh.Dial("tcp", "45.33.35.178:22", config)
+	sshClient, err := ssh.Dial("tcp", serverSshEndpoint, config)
 	if err != nil {
 		log.Fatal("unable to connect: ", err)
 	}
@@ -101,41 +121,69 @@ func connect() {
 	}
 	defer session.Close()
 
-	// Run command to find IP addresses on server
-	var usedIpAddresses []string
-	var serverVpnNetworks []iplib.Net
-	runCommandOnServer("wg show interfaces | xargs -d ' ' -I '{}' echo '{}' | xargs -I '{}' ip address show dev '{}' | awk '/scope global/ { print $2 }'", func(line string) {
-		ip, ipNetwork, err := iplib.ParseCIDR(line)
-		if err != nil {
-			log.Fatal("failed to parse CIDR: ", err)
-		}
-		usedIpAddresses = append(usedIpAddresses, ip.String())
-		serverVpnNetworks = append(serverVpnNetworks, ipNetwork)
-	}, sshClient)
-
-	// Run command to get all used client IP addresses
-	runCommandOnServer("wg show all allowed-ips | awk '{ print $3 }'", func(line string) {
-		ip, _, err := iplib.ParseCIDR(line)
-		if err != nil {
-			log.Fatal("failed to parse CIDR: ", err)
-		}
-		usedIpAddresses = append(usedIpAddresses, ip.String())
-	}, sshClient)
-
-	// Loop over each network to find an available IP address
+	// Run command to find server-side IP addresses on server
 	var availableAddress net.IP
-	for _, network := range serverVpnNetworks {
-		newAddress := network.FirstAddress()
-		for availableAddress == nil {
-			newAddress = iplib.NextIP(newAddress)
+	var serverInterfaceList []string
+	var serverInterfaceName string
+	var serverWireguardPort int
+
+	// Find all available interfaces on server
+	runCommandOnServer("wg show interfaces | xargs -d ' ' -I '{}' echo '{}'", func(line string) {
+		if len(line) > 0 {
+			serverInterfaceList = append(serverInterfaceList, line)
+		}
+	}, sshClient)
+
+	for _, serverInterface := range serverInterfaceList {
+
+		serverInterfaceName = serverInterface
+		var usedIpAddresses []string
+		var networkRange iplib.Net
+
+		// Run command to get the network range this interface uses
+		cmd := fmt.Sprintf("ip address show dev %s | awk '/scope global/ { print $2 }'", serverInterface)
+		runCommandOnServer(cmd, func(line string) {
+			ip, ipNetwork, err := iplib.ParseCIDR(line)
+			if err != nil {
+				log.Fatal("failed to parse CIDR: ", err)
+			}
+			usedIpAddresses = append(usedIpAddresses, ip.String())
+			networkRange = ipNetwork
+		}, sshClient)
+
+		// Run command to get all used client IP addresses
+		runCommandOnServer("wg show all allowed-ips | awk '{ print $3 }'", func(line string) {
+			ip, _, err := iplib.ParseCIDR(line)
+			if err != nil {
+				log.Fatal("failed to parse CIDR: ", err)
+			}
+			usedIpAddresses = append(usedIpAddresses, ip.String())
+		}, sshClient)
+
+		// Loop over  to find an available IP address
+		var newAddress = networkRange.FirstAddress()
+		var lastAddress = networkRange.LastAddress()
+		for newAddress.String() != lastAddress.String() {
 			if !contains(usedIpAddresses, newAddress.String()) {
 				availableAddress = newAddress
 				break
 			}
+			newAddress = iplib.NextIP(newAddress)
+		}
+
+		if availableAddress != nil {
+			cmd := fmt.Sprintf("wg show %s listen-port", serverInterface)
+			runCommandOnServer(cmd, func(line string) {
+				serverWireguardPort, err = strconv.Atoi(line)
+				if err != nil {
+					log.Fatal("error pulling server wireguard port", err)
+				}
+			}, sshClient)
+			break
 		}
 	}
 
-	clientIp := availableAddress.String()
+	clientIp := fmt.Sprintf("%s/32", availableAddress.String())
 
 	resp, err = client.R().
 		SetHeader("Accept", "application/json").
@@ -148,9 +196,10 @@ func connect() {
 
 	var wgPublicKeyData map[string]string
 	err = json.Unmarshal([]byte(resp.String()), &wgPublicKeyData)
-	serverPublicKey, err := wgtypes.ParseKey(wgPublicKeyData["publicKey"])
+
+	rpcClient, err := rpc.Dial("tcp", "localhost:12345")
 	if err != nil {
-		log.Fatal("error parsing server public key: ", err)
+		log.Fatal(err)
 	}
 
 	clientPrivateKey, err := wgtypes.GeneratePrivateKey()
@@ -159,42 +208,32 @@ func connect() {
 	}
 	clientPublicKey := clientPrivateKey.PublicKey()
 
-	_, zeroRange, err := net.ParseCIDR("0.0.0.0/0")
-	if err != nil {
-		log.Fatal(err)
-	}
-	allowIpsFromServer := []net.IPNet{*zeroRange}
-
-	peer := wgtypes.PeerConfig{
-		PublicKey:  serverPublicKey,
-		AllowedIPs: allowIpsFromServer,
-	}
-
-	cfg := wgtypes.Config{
-		Peers:        []wgtypes.PeerConfig{peer},
-		ReplacePeers: false,
-	}
-
-	c, err := wgctrl.New()
-	if err != nil {
-		log.Fatalf("Error getting new wire guard client: %v", err.Error())
-	}
-	device := "wg0"
-	confDErr := c.ConfigureDevice(device, cfg)
-	if confDErr != nil {
-		log.Fatalf("Error configuring device %s:\n\n\t%v", device, confDErr.Error())
-	}
-
-	closeErr := c.Close()
-	if closeErr != nil {
-		log.Fatalf("Error closing wireguard client:\n\n\t%v", closeErr.Error())
+	configData := ConfigData{
+		ServerPublicKeyData: wgPublicKeyData["publicKey"],
+		ClientAddress:       clientIp,
+		ServerAddress:       serverIp,
+		ServerPort:          serverWireguardPort,
+		ClientPrivateKey:    clientPrivateKey.String(),
 	}
 
 	// Run command to set up peer on server
-	setPeerCommandText := fmt.Sprintf("wg set %s peer %s allowed-ips %s", device, clientPublicKey, clientIp)
-	if err := session.Run(setPeerCommandText); err != nil {
-		log.Fatal("failed to run command: ", err)
+	session, err = sshClient.NewSession()
+	if err != nil {
+		log.Fatal("unable to create session: ", err)
 	}
+	defer session.Close()
+	setPeerCommandText := fmt.Sprintf("wg set %s listen-port %d peer %s allowed-ips %s", serverInterfaceName, serverWireguardPort, clientPublicKey, clientIp)
+	fmt.Println(setPeerCommandText)
+	if err := session.Run(setPeerCommandText); err != nil {
+		log.Fatal("failed to run wg set command: ", err)
+	}
+
+	var reply Reply
+	err = rpcClient.Call("Listener.ConfigureWgInterface", configData, &reply)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("Reply: %v, Data: %v", reply, reply.Data)
 
 }
 
@@ -237,7 +276,7 @@ func getPassword(prompt string) string {
 	signalChannel := make(chan os.Signal, 1)
 	signal.Notify(signalChannel, os.Interrupt)
 	go func() {
-		for _ = range signalChannel {
+		for range signalChannel {
 			fmt.Println("\n^C interrupt.")
 			termEcho(true)
 			os.Exit(1)

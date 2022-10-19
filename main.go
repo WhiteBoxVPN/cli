@@ -12,13 +12,15 @@ func main() {
 	serversCommand := flag.NewFlagSet("servers", flag.ExitOnError)
 	serversListCommand := flag.NewFlagSet("list", flag.ExitOnError)
 	connectCommand := flag.NewFlagSet("connect", flag.ExitOnError)
+	disconnectCommand := flag.NewFlagSet("disconnect", flag.ExitOnError)
 
 	if len(os.Args) == 1 {
 		fmt.Println("usage: wb <command> [<subcommand>] [<args>]")
 		fmt.Println("Available commands are:")
-		fmt.Println(" login   Ask questions")
-		fmt.Println(" servers  Send messages to your contacts")
-		fmt.Println(" connect  Connect to a VPN server")
+		fmt.Println(" login       Ask questions")
+		fmt.Println(" servers     Send messages to your contacts")
+		fmt.Println(" connect     Connect to a VPN server")
+		fmt.Println(" disconnect  Disconnect to a VPN server")
 		return
 	}
 
@@ -29,6 +31,8 @@ func main() {
 		serversCommand.Parse(os.Args[2:])
 	case "connect":
 		connectCommand.Parse(os.Args[2:])
+	case "disconnect":
+		disconnectCommand.Parse(os.Args[2:])
 	}
 
 	if loginCommand.Parsed() {
@@ -57,6 +61,10 @@ func main() {
 
 	if connectCommand.Parsed() {
 		connect()
+	}
+
+	if disconnectCommand.Parsed() {
+		disconnect()
 	}
 
 }
