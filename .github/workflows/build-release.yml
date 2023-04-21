@@ -15,7 +15,7 @@ jobs:
       - name: Create tar.gz file
         uses: a7ul/tar-action@v1.1.3
         with:
-          command: czf
+          command: c
           files: |
             cli/wb
             daemon/wbd
