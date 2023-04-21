@@ -10,8 +10,8 @@ jobs:
     steps:
       - name: Check out repository code
         uses: actions/checkout@v3
-      - run: cd cli && make
-      - run: cd daemon && make
+      - run: cd cli && make && mv ./wb ../
+      - run: cd daemon && make && mv ./wbd ../
       - name: Read VERSION file
         id: getversion
         run: echo "version=$(cat VERSION)" >> $GITHUB_OUTPUT
