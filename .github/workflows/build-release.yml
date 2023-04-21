@@ -28,12 +28,10 @@ jobs:
       - name: Upload to Google Cloud Storage
         uses: google-github-actions/upload-cloud-storage@v1.0.2
         with:
-          local_file_path: wb-linux-${{ steps.getversion.outputs.version }}.tar.gz
-          remote_file_path: wb-linux-${{ steps.getversion.outputs.version }}.tar.gz
-          bucket_name: wbvpn-release
+          path: wb-linux-${{ steps.getversion.outputs.version }}.tar.gz
+          destination: wbvpn-release/wb-linux-${{ steps.getversion.outputs.version }}.tar.gz
       - name: Upload to Google Cloud Storage
         uses: google-github-actions/upload-cloud-storage@v1.0.2
         with:
-          local_file_path: wb-linux-${{ steps.getversion.outputs.version }}.tar.gz
-          remote_file_path: wb-linux-latest.tar.gz
-          bucket_name: wbvpn-release
+          path: wb-linux-${{ steps.getversion.outputs.version }}.tar.gz
+          destination: wbvpn-release/wb-linux-latest.tar.gz
