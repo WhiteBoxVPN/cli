@@ -7,4 +7,34 @@ jobs:
     steps:
       - name: Check out repository code
         uses: actions/checkout@v3
-      - run: make
+      - run: cd cli && make
+      - run: cd daemon && make
+      - name: Read VERSION file
+        id: getversion
+        run: echo "::set-output name=version::$(cat VERSION)"
+      - name: Create tar.gz file
+        uses: a7ul/tar-action@v1.1.3
+        with:
+          command: czf
+          files: |
+            cli/wb
+            daemon/wbd
+          outPath: wb-linux-${{ steps.getversion.outputs.version }}.tar.gz
+      - name: Authenticate with GCP
+        uses: GoogleCloudPlatform/github-actions/setup-gcloud@master
+        with:
+          service_account_email: ${{ secrets.GCP_SA_EMAIL }}
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+      - name: Upload to Google Cloud Storage
+        uses: GoogleCloudPlatform/github-actions/upload-cloud-storage@master
+        with:
+          local_file_path: wb-linux-${{ steps.getversion.outputs.version }}.tar.gz
+          remote_file_path: wb-linux-${{ steps.getversion.outputs.version }}.tar.gz
+          bucket_name: wbvpn-release
+      - name: Upload to Google Cloud Storage
+        uses: GoogleCloudPlatform/github-actions/upload-cloud-storage@master
+        with:
+          local_file_path: wb-linux-${{ steps.getversion.outputs.version }}.tar.gz
+          remote_file_path: wb-linux-latest.tar.gz
+          bucket_name: wbvpn-release
