@@ -21,19 +21,18 @@ jobs:
             daemon/wbd
           outPath: wb-linux-${{ steps.getversion.outputs.version }}.tar.gz
       - name: Authenticate with GCP
-        uses: GoogleCloudPlatform/github-actions/setup-gcloud@master
+        uses: google-github-actions/setup-gcloud@v1.1.0
         with:
-          service_account_email: ${{ secrets.GCP_SA_EMAIL }}
-          service_account_key: ${{ secrets.GCP_SA_KEY }}
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          service_account: 'github-service-account@vpnwebsite-972ea.iam.gserviceaccount.com'
+          workload_identity_provider: projects/61621990789/locations/global/workloadIdentityPools/my-pool/providers/my-provider
       - name: Upload to Google Cloud Storage
-        uses: GoogleCloudPlatform/github-actions/upload-cloud-storage@master
+        uses: google-github-actions/upload-cloud-storage@v1.0.2
         with:
           local_file_path: wb-linux-${{ steps.getversion.outputs.version }}.tar.gz
           remote_file_path: wb-linux-${{ steps.getversion.outputs.version }}.tar.gz
           bucket_name: wbvpn-release
       - name: Upload to Google Cloud Storage
-        uses: GoogleCloudPlatform/github-actions/upload-cloud-storage@master
+        uses: google-github-actions/upload-cloud-storage@v1.0.2
         with:
           local_file_path: wb-linux-${{ steps.getversion.outputs.version }}.tar.gz
           remote_file_path: wb-linux-latest.tar.gz
