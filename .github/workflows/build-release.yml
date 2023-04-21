@@ -20,8 +20,8 @@ jobs:
         with:
           command: c
           files: |
-            cli/wb
-            daemon/wbd
+            wb
+            wbd
           outPath: wb-linux-${{ steps.getversion.outputs.version }}.tar.gz
       - name: Copy tar.gz
         run: cp wb-linux-${{ steps.getversion.outputs.version }}.tar.gz wb-linux-latest.tar.gz
