@@ -38,7 +38,11 @@ func servers_list() {
 	fmt.Fprintf(w, "Name\tIP\tStatus\tRegion\tIs Admin\n")
 	fmt.Fprintf(w, "----\t--\t------\t------\t--------\n")
 	for _, s := range serverList {
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%t\n", s.Name, s.Ipv4[0], s.Status, s.RegionLabel, s.IsAdmin)
+		var ip string = ""
+		if len(s.Ipv4) > 0 {
+			ip = s.Ipv4[0]
+		}
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%t\n", s.Name, ip, s.Status, s.RegionLabel, s.IsAdmin)
 	}
 	w.Flush()
 }
