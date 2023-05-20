@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/whiteboxvpn/cli/types"
 	"github.com/c-robinson/iplib"
 	"github.com/go-resty/resty/v2"
 	"golang.org/x/crypto/ssh"
@@ -19,14 +20,6 @@ import (
 
 type Reply struct {
 	Data string
-}
-
-type ConfigData struct {
-	ServerPublicKeyData string
-	ClientAddress       string
-	ServerAddress       string
-	ServerPort          int
-	ClientPrivateKey    string
 }
 
 func connect(serverName string) {
@@ -233,7 +226,7 @@ func connect(serverName string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	configData := ConfigData{
+	configData := types.ConfigData{
 		ServerPublicKeyData: wgPublicKeyData["publicKey"],
 		ClientAddress:       clientIp,
 		ServerAddress:       serverIp,

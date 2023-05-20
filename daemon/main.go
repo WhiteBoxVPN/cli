@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/rpc"
 
+	"github.com/whiteboxvpn/cli/types"
 	"github.com/coreos/go-iptables/iptables"
 	"github.com/vishvananda/netlink"
 	"golang.org/x/sys/unix"
@@ -17,14 +18,6 @@ type Listener int
 
 type Reply struct {
 	Data string
-}
-
-type ConfigData struct {
-	ServerPublicKeyData string
-	ClientAddress       string
-	ServerAddress       string
-	ServerPort          int
-	ClientPrivateKey    string
 }
 
 type VPNDisconnectData struct {
@@ -66,7 +59,7 @@ func (l *Listener) VPNDisconnect(data VPNDisconnectData, reply *Reply) error {
 	return nil
 }
 
-func (l *Listener) ConfigureWgInterface(configData ConfigData, reply *Reply) error {
+func (l *Listener) ConfigureWgInterface(configData types.ConfigData, reply *Reply) error {
 
 	// Parse the server's wireguard public key
 	serverPublicKey, err := wgtypes.ParseKey(string(configData.ServerPublicKeyData))
