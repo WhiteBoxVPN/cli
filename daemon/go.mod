@@ -5,6 +5,7 @@ go 1.19
 require (
 	github.com/coreos/go-iptables v0.6.0
 	github.com/vishvananda/netlink v1.2.1-beta.2
+	github.com/whiteboxvpn/cli/types v0.0.0-20230520164024-d9a8a37a8439
 	golang.org/x/sys v0.0.0-20221013171732-95e765b1cc43
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20220916014741-473347a5e6e3
 )

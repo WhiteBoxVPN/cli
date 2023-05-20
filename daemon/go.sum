@@ -18,6 +18,8 @@ github.com/vishvananda/netlink v1.2.1-beta.2/go.mod h1:twkDnbuQxJYemMlGd4JFIcuhg
 github.com/vishvananda/netns v0.0.0-20200728191858-db3c7e526aae/go.mod h1:DD4vA1DwXk04H54A1oHXtwZmA0grkVMdPxx/VGLCah0=
 github.com/vishvananda/netns v0.0.0-20220913150850-18c4f4234207 h1:nn7SOQy8xCu3iXNv7oiBhhEQtbWdnEOMnuKBlHvrqIM=
 github.com/vishvananda/netns v0.0.0-20220913150850-18c4f4234207/go.mod h1:DD4vA1DwXk04H54A1oHXtwZmA0grkVMdPxx/VGLCah0=
+github.com/whiteboxvpn/cli/types v0.0.0-20230520164024-d9a8a37a8439 h1:7ojM9CXVqWfHAyacCmfZtsXPI5Q9FqU4aw+h/y9S+6k=
+github.com/whiteboxvpn/cli/types v0.0.0-20230520164024-d9a8a37a8439/go.mod h1:qW09fVyp7aYHwakRl4TFuVhIQSA4/odZp/YSw1RRq30=
 golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4 h1:kUhD7nTDoI3fVd9G4ORWrbV5NY0liEs/Jg2pv5f+bBA=
 golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4/go.mod h1:IxCIyHEi3zRg3s0A5j5BB6A9Jmi73HwBIUl50j+osU4=
 golang.org/x/net v0.0.0-20210928044308-7d9f5e0b762b/go.mod h1:9nx3DQGgdP8bBQD5qxJ1jj9UTztislL4KSBs9R2vV5Y=
